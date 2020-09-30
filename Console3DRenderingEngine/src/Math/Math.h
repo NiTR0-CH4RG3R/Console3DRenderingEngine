@@ -137,6 +137,23 @@
 			return Mat4MakeRotationXYZInv({ x, y, z });
 		}
 
+		static Mat4x4 Mat4MakeRotationYXZ(const Vector3& rotation) {
+			return Mat4MakeRotationY(rotation.y) * Mat4MakeRotationX(rotation.x) * Mat4MakeRotationZ(rotation.z);
+		}
+
+		static Mat4x4 Mat4MakeRotationYXZInv(const Vector3& rotation) {
+			return Mat4MakeRotationY(-rotation.y) * Mat4MakeRotationX(-rotation.x) * Mat4MakeRotationZ(-rotation.z);
+		}
+
+		static Mat4x4 Mat4MakeRotationYXZ(const float& x, const float& y, const float& z) {
+			return Mat4MakeRotationYXZ({ x, y, z });
+		}
+
+		static Mat4x4 Mat4MakeRotationYXZInv(const float& x, const float& y, const float& z) {
+			return Mat4MakeRotationYXZInv({ x, y, z });
+		}
+
+
 		static Mat4x4 Mat4RotateAroundAxis(const Vector3& axis, const float& theta) {
 			const float fSinTheta = std::sinf(theta);
 			const float fCosTheta = std::cosf(theta);
@@ -224,6 +241,35 @@
 			return Mat3MakeRotationXYZInv({ x, y, z });
 		}
 
+
+		static Mat3x3 Mat3MakeRotationYXZ(const Vector3& rotation) {
+			return Mat3MakeRotationY(rotation.y) * Mat3MakeRotationX(rotation.x) * Mat3MakeRotationZ(rotation.z);
+		}
+
+		static Mat3x3 Mat3MakeRotationYXZInv(const Vector3& rotation) {
+			return Mat3MakeRotationY(-rotation.y) * Mat3MakeRotationX(-rotation.x) * Mat3MakeRotationZ(-rotation.z);
+		}
+
+		static Mat3x3 Mat3MakeRotationYXZ(const float& x, const float& y, const float& z) {
+			return Mat3MakeRotationYXZ({ x, y, z });
+		}
+
+		static Mat3x3 Mat3MakeRotationYXZInv(const float& x, const float& y, const float& z) {
+			return Mat3MakeRotationYXZInv({ x, y, z });
+		}
+
+
+		static Mat3x3 Mat3MakeRotationAroundAxis(const float& theta, const Vector3& axis) {
+			const float& fCosTheta = std::cosf(theta); const float& fSinTheta = std::sinf(theta);
+			
+
+			return{
+				fCosTheta + std::powf(axis.x, 2.0f) * (1.0f - fCosTheta)	,		axis.x * axis.y * (1.0f - fCosTheta) - axis.z * fSinTheta	,		axis.x * axis.z * (1.0f - fCosTheta) + axis.y * fSinTheta,
+				axis.y * axis.x * (1.0f - fCosTheta) + axis.z * fSinTheta	,		fCosTheta + std::powf(axis.y, 2.0f) * (1.0f - fCosTheta)	,		axis.y * axis.z * (1.0f - fCosTheta) - axis.x * fSinTheta,
+				axis.z * axis.x * (1.0f - fCosTheta) - axis.y * fSinTheta	,		axis.z * axis.y * (1.0f - fCosTheta) + axis.x * fSinTheta	,		fCosTheta + std::powf(axis.z, 2.0f) * (1.0f - fCosTheta)
+			};
+		}
+
 		static Vector3 Vec3CrossProduct(const Vector3& a, const Vector3 b) {
 			return Vector3(
 				a.y * b.z - a.z * b.y,
@@ -239,6 +285,13 @@
 				a.x * b.y - a.y * b.x
 			);
 		}
+
+		static float Vec2DotProduct(const Vector2& a, const Vector2 b) {
+			return
+				a.x * b.x + a.y * b.y;
+				;
+		}
+
 
 		static float Vec3DotProduct(const Vector3& a, const Vector3 b) {
 			return
