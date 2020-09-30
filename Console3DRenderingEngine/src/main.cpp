@@ -199,8 +199,8 @@ CHAR_INFO* pBackBuffer = nullptr;
 
 
 //Console size configurations
-constexpr int nScreenWidth = 150; //Console Window Width in Character cells
-constexpr int nScreenHeight = 120; //Console Window Height in Character cells
+constexpr int nScreenWidth = 300; //Console Window Width in Character cells
+constexpr int nScreenHeight = 150; //Console Window Height in Character cells
 constexpr unsigned short nFontWidth = 4; //Console Character Width in Screen pixels
 constexpr unsigned short nFontHeight = 4; //Console Character Height in Screen Pixels
 
@@ -520,10 +520,10 @@ struct DirectionalLight {
 };
 
 std::unordered_map<int /*object_id*/, std::pair< std::string /*Filename / Filepath*/, Transform /*position and rotation data*/>> ObjFiles = {
-		{0, { "Models/Box.obj" ,	{Math::Vector3(0.0f, 0.0f, 4.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
-		{1, { "Models/Monkey.obj" , {Math::Vector3(3.0f, 0.0f, 5.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
+		//{0, { "Models/Box.obj" ,	{Math::Vector3(0.0f, 0.0f, 4.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
+		//{1, { "Models/Monkey.obj" , {Math::Vector3(3.0f, 0.0f, 5.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
 		//{2, { "Models/human_female.obj", {Math::Vector3(-4.0f, 0.0f, 5.0f), Math::Vector3(0.0f, 0.0f, 0.0f)}}},
-	//{0, { "Models/fantacy_tree_house.obj" ,	{Math::Vector3(0.0f, 0.0f, 20.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
+	{3, { "Models/fantacy_tree_house.obj" ,	{Math::Vector3(0.0f, 0.0f, 20.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
 };
 std::unordered_map<int /*object_id*/, Mesh /*Actual mesh*/> GameObjects;
 
@@ -609,9 +609,10 @@ void RasterizeTriangle(Math::Vector3 p0,
 
 				//Finaly draw the pixel if the depth value of that pixel higher than the depth value already there
 				if (x >= 0 && x < nScreenWidth && y >= 0 && y < nScreenHeight) {
-					if (z > _pfDepthBuffer[x + y * nScreenWidth]) {
+					float zInv = 1.0f / z;
+					if (zInv > _pfDepthBuffer[x + y * nScreenWidth]) {
 						SetPixel(x, y, UnicodeCharacter, Attributes);
-						_pfDepthBuffer[x + y * nScreenWidth] = z;
+						_pfDepthBuffer[x + y * nScreenWidth] = zInv;
 					}
 				}
 
@@ -663,9 +664,10 @@ void RasterizeTriangle(Math::Vector3 p0,
 				float z = z_value_of_the_current_pixel + z_value_of_p1;
 
 				if (x >= 0 && x < nScreenWidth && y >= 0 && y < nScreenHeight) {
-					if (z > _pfDepthBuffer[x + y * nScreenWidth]) {
+					float zInv = 1.0f / z;
+					if (zInv > _pfDepthBuffer[x + y * nScreenWidth]) {
 						SetPixel(x, y, UnicodeCharacter, Attributes);
-						_pfDepthBuffer[x + y * nScreenWidth] = z;
+						_pfDepthBuffer[x + y * nScreenWidth] = zInv;
 					}
 				}
 
@@ -685,7 +687,7 @@ bool OnStart() {
 	ProjectionMatrix = Math::Mat4MakeProjectionMatrix((float)nScreenWidth / (float)nScreenHeight, 90.0f, 0.05f, 1000.0f);
 
 	//Set the position and the transformation of the main camera to zero vectors
-	mainCamera.transform.position = Math::Vector3(0.0f, 2.0f, 0.0f);
+	mainCamera.transform.position = Math::Vector3(0.0f, 0.0f, 0.0f);
 	mainCamera.transform.rotation = Math::Vector3(0.0f, 0.0f, 0.0f);
 
 	//Set the camera moving speed to 2.0 unit per second;
@@ -755,11 +757,26 @@ bool OnUpdate(float dt) {
 	if (GetAsyncKeyState(KEY_CODE::L) & 0x8000) {
 		//Rotate clockwise around y axis of the camera
 		mainCamera.transform.rotation.y += mainCamera.fCameraRotatingSpeed * dt;
+
 	}
 	if (GetAsyncKeyState(KEY_CODE::J) & 0x8000) {
 		//Rotate counter-clockwise around y axis of the camera
 		mainCamera.transform.rotation.y -= mainCamera.fCameraRotatingSpeed * dt;
+
 	}
+	if (GetAsyncKeyState(KEY_CODE::K) & 0x8000) {
+		//Rotate clockwise around x axis of the camera
+		//Take the direction of the local z
+		mainCamera.transform.rotation.x += mainCamera.fCameraRotatingSpeed * dt;
+		if(mainCamera.transform.rotation.x > Math::fDegToRadian(89.0f))
+			mainCamera.transform.rotation.x -= mainCamera.fCameraRotatingSpeed * dt;
+	}
+	if (GetAsyncKeyState(KEY_CODE::I) & 0x8000) {
+		mainCamera.transform.rotation.x -= mainCamera.fCameraRotatingSpeed * dt;
+		if (mainCamera.transform.rotation.x < Math::fDegToRadian(-89.0f))
+			mainCamera.transform.rotation.x += mainCamera.fCameraRotatingSpeed * dt;
+	}
+
 	if (GetAsyncKeyState(KEY_CODE::NUMPAD8) & 0x8000) {
 		//Rotate clockwise around x axis of the directoinalLight
 		directoinalLight.rotation.x -= 1.0f * dt;
@@ -778,8 +795,8 @@ bool OnUpdate(float dt) {
 	}
 
 	//Rotate the cube around its x axis and z axis
-	GameObjects[0].transform.rotation.x += 1.0f * dt;
-	GameObjects[0].transform.rotation.z += 1.0f * dt;
+	//GameObjects[0].transform.rotation.x += 1.0f * dt;
+	//GameObjects[0].transform.rotation.z += 1.0f * dt;
 
 	//Rendering routine
 	//Loop through the elements of the GameObjects map
@@ -793,7 +810,7 @@ bool OnUpdate(float dt) {
 				Math::Mat4MakeRotationZXY(GameObject.second.transform.rotation) * // We rotate the vertex.position according to the object's rotation information in object space
 				Math::Mat4MakeTranslation(GameObject.second.transform.position) * // Convert the position from Object space to world space by adding the object position to the vertex position
 				Math::Mat4MakeTranslationInv(mainCamera.transform.position) * 
-				Math::Mat4MakeRotationZXYInv(mainCamera.transform.rotation) * // Get the position of the vertex in CamaraSpcae by translating and rotating the vertex by camera position and rotation
+				Math::Mat4MakeRotationYXZInv(mainCamera.transform.rotation) * // Get the position of the vertex in CamaraSpcae by translating and rotating the vertex by camera position and rotation
 				ProjectionMatrix; // Finaly Multiply the position of the vertex so we can convert it to the screen spcae
 
 
@@ -802,8 +819,8 @@ bool OnUpdate(float dt) {
 				// Get the position of the vertex in normalized screen space by deviding the vector by its w component
 				transformedVertex /= transformedVertex.w;
 				// Finaly convert it to real screen cordinates
-				transformedVertex.x = (transformedVertex.x * 0.5f + 0.5f) * (float)nScreenWidth;
-				transformedVertex.y = (1.0f - (transformedVertex.y * 0.5f + 0.5f)) * (float)nScreenHeight;
+				//transformedVertex.x = (transformedVertex.x * 0.5f + 0.5f) * (float)nScreenWidth;
+				//transformedVertex.y = (1.0f - (transformedVertex.y * 0.5f + 0.5f)) * (float)nScreenHeight;
 			}
 			// Push the final transformed vertex position to vec4TransformedVertices vector
 			vec4TransformedVertices.push_back(transformedVertex);
@@ -820,64 +837,66 @@ bool OnUpdate(float dt) {
 			// TODO : Implement a triangle clipping algorithm
 			if (p0_in_screen_space.w == 1.0f && p1_in_screen_space.w == 1.0f && p2_in_screen_space.w == 1.0f) {
 
-				//Get the normal of this particular triangle (in world space)
-				Math::Vector3 normal = GameObject.second.normals[(int)(i / 3)];
+				if (
+					(p0_in_screen_space.x <= 1.0f && p0_in_screen_space.x >= -1.0f && p0_in_screen_space.y <= 1.0f && p0_in_screen_space.y >= -1.0f) ||
+					(p1_in_screen_space.x <= 1.0f && p1_in_screen_space.x >= -1.0f && p1_in_screen_space.y <= 1.0f && p1_in_screen_space.y >= -1.0f) ||
+					(p2_in_screen_space.x <= 1.0f && p2_in_screen_space.x >= -1.0f && p2_in_screen_space.y <= 1.0f && p2_in_screen_space.y >= -1.0f)
+					) {
 
-				//Convert the normal from Object space to world space by rotating it by object's rotation
-				normal = normal * Math::Mat3MakeRotationZXY(GameObject.second.transform.rotation);
-				normal.Normalize();
+					//Get the normal of this particular triangle (in world space)
+					Math::Vector3 normal = GameObject.second.normals[(int)(i / 3)];
 
-				//Normal of the object relative to the main camera ( This is for testing purposes only )
-				Math::Vector3 normal_relative_to_mainCamera = normal * Math::Mat3MakeRotationZXYInv(mainCamera.transform.rotation);
-
-				//Get the vertex of the triangle relative to the camera (Vector4)
-				Math::Vector4 vec4_vertex_of_the_triangle_rel_to_mainCamera = Math::Vector4(GameObject.second.vertices[GameObject.second.indices[i + 1]].position) * Math::Mat4MakeRotationZXY(GameObject.second.transform.rotation) * Math::Mat4MakeTranslation(GameObject.second.transform.position) * Math::Mat4MakeTranslationInv(mainCamera.transform.position) * Math::Mat4MakeRotationZXYInv(mainCamera.transform.rotation);
-
-				//Turn the above vertex position to vector3 So we can apply this to Math::Vec3DotProduct() function below
-				Math::Vector3 vertex_of_the_triangle_rel_to_mainCamera(
-					vec4_vertex_of_the_triangle_rel_to_mainCamera.x,
-					vec4_vertex_of_the_triangle_rel_to_mainCamera.y,
-					vec4_vertex_of_the_triangle_rel_to_mainCamera.z
-				);
+					//Convert the normal from Object space to world space by rotating it by object's rotation
+					normal = normal * Math::Mat3MakeRotationZXY(GameObject.second.transform.rotation);
+					normal.Normalize();
 
 
-				//Directional Light direction
-				//We could pre calcultate this instead of recalculating this every frame
-				//But this way it gets a more dynamic look. I mean if you modified the rotation of the directional light at runtime pre calculated results won't give you realtime results
-				Math::Vector3 directional_light_direction = Math::VEC3_Forward * Math::Mat3MakeRotationZXY(directoinalLight.rotation);
-				directional_light_direction.Normalize();
+					//Directional Light direction
+					//We could pre calcultate this instead of recalculating this every frame
+					//But this way it gets a more dynamic look. I mean if you modified the rotation of the directional light at runtime pre calculated results won't give you realtime results
+					Math::Vector3 directional_light_direction = Math::VEC3_Forward * Math::Mat3MakeRotationZXY(directoinalLight.rotation);
+					directional_light_direction.Normalize();
 
-				//Since we are calculating the dot product of 2 normalized vectors dot product will be between -1 and 1. We have to normalize that before feeding it into the ClassifyPixel() function to determine the color of the pixel
-				float dot_product_of_the_triangle_normal_and_light_direction = Math::Vec3DotProduct(normal, directional_light_direction);
+					//Since we are calculating the dot product of 2 normalized vectors dot product will be between -1 and 1. We have to normalize that before feeding it into the ClassifyPixel() function to determine the color of the pixel
+					float dot_product_of_the_triangle_normal_and_light_direction = Math::Vec3DotProduct(normal, directional_light_direction);
 
-				//Normalize the dot_product_of_the_triangle_normal_and_light_direction
-				dot_product_of_the_triangle_normal_and_light_direction = dot_product_of_the_triangle_normal_and_light_direction * 0.5f + 0.5f;
+					//Normalize the dot_product_of_the_triangle_normal_and_light_direction
+					dot_product_of_the_triangle_normal_and_light_direction = dot_product_of_the_triangle_normal_and_light_direction * 0.5f + 0.5f;
 
-				
 
-				CHAR_INFO pixel_info = ClassifyPixel(dot_product_of_the_triangle_normal_and_light_direction);
 
-				// Only draw the triangle if the dot product of the vertex_of_the_triangle_rel_to_mainCamera vector and normal_relative_to_mainCamera vector is equal or less than zero. \
-				//This is for backface culling. If you want to know about why we do this. Google "How does backface culling work in computer graphics) 
+					CHAR_INFO pixel_info = ClassifyPixel(dot_product_of_the_triangle_normal_and_light_direction);
 
-				// TODO : Right now Getting the dot product of the vertex_of_the_triangle_rel_to_mainCamera and normal_relative_to_mainCamera to determine to cull a face or not doesn't work very well. 
-				//So I have skipped the backface culling part for now. I may fix it later. Right now back face culling doesn't make any visual difernce because we already have implemented the depth buffer. 
-				//It certenly gives a perfomance improvement so I will fix it. Until then no backface culling!
+					// Only draw the triangle if the dot product of the vertex_of_the_triangle_rel_to_mainCamera vector and normal_relative_to_mainCamera vector is equal or less than zero. \
+					//This is for backface culling. If you want to know about why we do this. Google "How does backface culling work in computer graphics) 
 
-				//if (Math::Vec3DotProduct(vertex_of_the_triangle_rel_to_mainCamera, normal_relative_to_mainCamera) <= 0.0f) {
-					//Finaly draw the driangle in wireframe mode using DrawTriangle() function
-					//DrawTriangle( Math::Vector2i((int)p0_in_screen_space.x, (int)p0_in_screen_space.y), Math::Vector2i((int)p1_in_screen_space.x, (int)p1_in_screen_space.y), Math::Vector2i((int)p2_in_screen_space.x, (int)p2_in_screen_space.y) );
+					//if (Math::Vec3DotProduct(vertex_of_the_triangle_rel_to_mainCamera, normal_relative_to_mainCamera) <= 0.0f) {
+						//Finaly draw the driangle in wireframe mode using DrawTriangle() function
+						//DrawTriangle( Math::Vector2i((int)p0_in_screen_space.x, (int)p0_in_screen_space.y), Math::Vector2i((int)p1_in_screen_space.x, (int)p1_in_screen_space.y), Math::Vector2i((int)p2_in_screen_space.x, (int)p2_in_screen_space.y) );
 
-					//Finaly Rasterize the triangle
-				RasterizeTriangle(
-					Math::Vector3(p0_in_screen_space.x, p0_in_screen_space.y, 1.0f / p0_in_screen_space.z),
-					Math::Vector3(p1_in_screen_space.x, p1_in_screen_space.y, 1.0f / p1_in_screen_space.z),
-					Math::Vector3(p2_in_screen_space.x, p2_in_screen_space.y, 1.0f / p2_in_screen_space.z),
-					pfDepthBuffer,
-					pixel_info.Char.UnicodeChar,
-					pixel_info.Attributes
-				);
-				//}
+
+					if (Math::Vec4CrossProduct(p1_in_screen_space - p0_in_screen_space, p2_in_screen_space - p0_in_screen_space).z <= 0.0f) {
+						p0_in_screen_space.x = (p0_in_screen_space.x * 0.5f + 0.5f) * (float)nScreenWidth;
+						p0_in_screen_space.y = (1.0f - (p0_in_screen_space.y * 0.5f + 0.5f)) * (float)nScreenHeight;
+
+						p1_in_screen_space.x = (p1_in_screen_space.x * 0.5f + 0.5f) * (float)nScreenWidth;
+						p1_in_screen_space.y = (1.0f - (p1_in_screen_space.y * 0.5f + 0.5f)) * (float)nScreenHeight;
+
+						p2_in_screen_space.x = (p2_in_screen_space.x * 0.5f + 0.5f) * (float)nScreenWidth;
+						p2_in_screen_space.y = (1.0f - (p2_in_screen_space.y * 0.5f + 0.5f)) * (float)nScreenHeight;
+
+						//Finaly Rasterize the triangle
+						RasterizeTriangle(
+							Math::Vector3(p0_in_screen_space.x, p0_in_screen_space.y, p0_in_screen_space.z),
+							Math::Vector3(p1_in_screen_space.x, p1_in_screen_space.y, p1_in_screen_space.z),
+							Math::Vector3(p2_in_screen_space.x, p2_in_screen_space.y, p2_in_screen_space.z),
+							pfDepthBuffer,
+							pixel_info.Char.UnicodeChar,
+							pixel_info.Attributes
+						);
+					}
+					
+				}
 			}
 		}
 	}
