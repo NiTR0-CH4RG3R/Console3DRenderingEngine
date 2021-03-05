@@ -21,6 +21,7 @@
 #include "Math/Math.h"
 
 //Standard Includes
+#include <iostream>
 #include <chrono>
 #include <unordered_map>
 #include <vector>
@@ -209,6 +210,9 @@ HANDLE hConsole = nullptr;
 
 //Declaration of the three main finctions. Implementations are below the main function
 
+//This runs once when appplication starts before it enters the rendering mode
+bool OnAwakeTextMode();
+
 //This runs once after the application starts
 bool OnStart();
 
@@ -220,6 +224,11 @@ void OnDestroy();
 
 
 int main() {
+
+	//Runs OnAwakeTextMode() function
+	if (!OnAwakeTextMode())
+		return 0;
+
 	//Get the handle to the current console
 	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -512,6 +521,10 @@ struct Camera {
 	Transform transform;
 	float fCameraMovingSpeed = 2.0f;
 	float fCameraRotatingSpeed = 5.0f;
+
+	float fCameraMoveMultiplyer = 1.0f;
+	float fMinMultiplyer = 1.0f;
+	float fMaxMultiplyer = 3.0f;
 };
 
 //A struct that holds the directional light data
@@ -520,8 +533,8 @@ struct DirectionalLight {
 };
 
 std::unordered_map<int /*object_id*/, std::pair< std::string /*Filename / Filepath*/, Transform /*position and rotation data*/>> ObjFiles = {
-		//{0, { "Models/Box.obj" ,	{Math::Vector3(0.0f, 0.0f, 4.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
-		//{1, { "Models/Monkey.obj" , {Math::Vector3(3.0f, 0.0f, 5.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
+		{0, { "Models/Box.obj" ,	{Math::Vector3(0.0f, 0.0f, 4.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
+		{1, { "Models/Monkey.obj" , {Math::Vector3(3.0f, 0.0f, 5.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
 		//{2, { "Models/human_female.obj", {Math::Vector3(-4.0f, 0.0f, 5.0f), Math::Vector3(0.0f, 0.0f, 0.0f)}}},
 	{3, { "Models/fantacy_tree_house.obj" ,	{Math::Vector3(0.0f, 0.0f, 20.0f), Math::Vector3(0.0f, 0.0f, 0.0f)} }},
 };
@@ -677,6 +690,36 @@ void RasterizeTriangle(Math::Vector3 p0,
 	}
 }
 
+bool OnAwakeTextMode() {
+	SetConsoleTitle(L"Console 3D Rendering Engine");
+	std::cout << "# ---------Controls---------" << std::endl;
+	std::cout << "#" << std::endl;
+	std::cout << "# W Key - Move forward" << std::endl;
+	std::cout << "# S Key - Move backward" << std::endl;
+	std::cout << "# D Key - Move right" << std::endl;
+	std::cout << "# A Key - Move left" << std::endl;
+	std::cout << "# Q Key - Move up" << std::endl;
+	std::cout << "# E Key - Move down" << std::endl;
+	std::cout << "# LSHIFT Key - Move faster" << std::endl;
+	std::cout << "#" << std::endl;
+	std::cout << "# I Key - Look up" << std::endl;
+	std::cout << "# K Key - Look down" << std::endl;
+	std::cout << "# L Key - Rotate right" << std::endl;
+	std::cout << "# J Key - Rotate left" << std::endl;
+	std::cout << "#" << std::endl;
+	std::cout << "# NUMPAD8 Key - Rotate Sun around X-Axis (Counter-Clockwise)" << std::endl;
+	std::cout << "# NUMPAD2 Key - Rotate Sun around X-Axis (Clockwise)" << std::endl;
+	std::cout << "# NUMPAD6 Key - Rotate Sun around Y-Axis (Clockwise)" << std::endl;
+	std::cout << "# NUMPAD4 Key - Rotate Sun around Y-Axis (Counter-Clockwise)" << std::endl;
+	std::cout << "#" << std::endl;
+	std::cout << "# -------End-Controls-------" << std::endl;
+	std::cout  << std::endl;
+	std::cout << "Press Enter to continue..." << std::endl;
+	std::cin.get();
+	
+	return true;
+}
+
 bool OnStart() {
 
 	//Alocate the memory for the pfDepthBuffer
@@ -695,6 +738,9 @@ bool OnStart() {
 
 	//Set the camera rotating spped to 5.0 radian per second
 	mainCamera.fCameraRotatingSpeed = 3.0f;
+
+	mainCamera.fMinMultiplyer = 1.0f;
+	mainCamera.fMaxMultiplyer = 3.0f;
 
 	//Set the directional light rotation to -45.0f deg around x axis, -45.0f deg around y axis and finaly -45.0f deg around z axis
 	directoinalLight.rotation = Math::Vector3(
@@ -724,35 +770,41 @@ bool OnUpdate(float dt) {
 	//Since we haven't implemented any proper way of gathering keyboard inputs I'm going to use Windows's GetAsyncKeyState() function to gather the keyboard input
 	//GetAsyncKeyState() function takes a virtual key code as the argument and returns a short. According to the https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
 	//the most significant bit of the returned short is set if the key is down. So for now that's all we need to know
+	if (GetAsyncKeyState(KEY_CODE::LSHIFT) & 0x8000) {
+		mainCamera.fCameraMoveMultiplyer = mainCamera.fMaxMultiplyer;
+	}
+	else {
+		mainCamera.fCameraMoveMultiplyer = mainCamera.fMinMultiplyer;
+	}
 	if (GetAsyncKeyState(KEY_CODE::W) & 0x8000) {
 		//Move forward relative to the camera
-		Math::Vector3 move_direction = Math::VEC3_Forward * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
-		mainCamera.transform.position += move_direction * mainCamera.fCameraMovingSpeed * dt;
+		Math::Vector3 move_direction = Math::VEC3_FORWARD * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
+		mainCamera.transform.position += move_direction * mainCamera.fCameraMovingSpeed * mainCamera.fCameraMoveMultiplyer * dt;
 	}
 	if (GetAsyncKeyState(KEY_CODE::S) & 0x8000) {
 		//Move backward relative to the camera
-		Math::Vector3 move_direction = Math::VEC3_Forward * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
-		mainCamera.transform.position -= move_direction * mainCamera.fCameraMovingSpeed * dt;
+		Math::Vector3 move_direction = Math::VEC3_FORWARD * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
+		mainCamera.transform.position -= move_direction * mainCamera.fCameraMovingSpeed * mainCamera.fCameraMoveMultiplyer * dt;
 	}
 	if (GetAsyncKeyState(KEY_CODE::D) & 0x8000) {
 		//Move Right relative to the camera
-		Math::Vector3 move_direction = Math::VEC3_Right * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
-		mainCamera.transform.position += move_direction * mainCamera.fCameraMovingSpeed * dt;
+		Math::Vector3 move_direction = Math::VEC3_RIGHT * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
+		mainCamera.transform.position += move_direction * mainCamera.fCameraMovingSpeed * mainCamera.fCameraMoveMultiplyer * dt;
 	}
 	if (GetAsyncKeyState(KEY_CODE::A) & 0x8000) {
 		//Move Left relative to the camera
-		Math::Vector3 move_direction = Math::VEC3_Right * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
-		mainCamera.transform.position -= move_direction * mainCamera.fCameraMovingSpeed * dt;
+		Math::Vector3 move_direction = Math::VEC3_RIGHT * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
+		mainCamera.transform.position -= move_direction * mainCamera.fCameraMovingSpeed * mainCamera.fCameraMoveMultiplyer * dt;
 	}
 	if (GetAsyncKeyState(KEY_CODE::Q) & 0x8000) {
 		//move Up relative to the camera
-		Math::Vector3 move_direction = Math::VEC3_Up * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
-		mainCamera.transform.position += move_direction * mainCamera.fCameraMovingSpeed * dt;
+		Math::Vector3 move_direction = Math::VEC3_UP * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
+		mainCamera.transform.position += move_direction * mainCamera.fCameraMovingSpeed * mainCamera.fCameraMoveMultiplyer * dt;
 	}
 	if (GetAsyncKeyState(KEY_CODE::E) & 0x8000) {
 		//move Down relative to the camera
-		Math::Vector3 move_direction = Math::VEC3_Up * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
-		mainCamera.transform.position -= move_direction * mainCamera.fCameraMovingSpeed * dt;
+		Math::Vector3 move_direction = Math::VEC3_UP * Math::Mat3MakeRotationZXY(mainCamera.transform.rotation);
+		mainCamera.transform.position -= move_direction * mainCamera.fCameraMovingSpeed * mainCamera.fCameraMoveMultiplyer * dt;
 	}
 	if (GetAsyncKeyState(KEY_CODE::L) & 0x8000) {
 		//Rotate clockwise around y axis of the camera
@@ -809,8 +861,8 @@ bool OnUpdate(float dt) {
 				Math::Vector4(vertex.position) * // vertex.position is in object space. Meaning, It's relative to the object's origin
 				Math::Mat4MakeRotationZXY(GameObject.second.transform.rotation) * // We rotate the vertex.position according to the object's rotation information in object space
 				Math::Mat4MakeTranslation(GameObject.second.transform.position) * // Convert the position from Object space to world space by adding the object position to the vertex position
-				Math::Mat4MakeTranslationInv(mainCamera.transform.position) * 
-				Math::Mat4MakeRotationYXZInv(mainCamera.transform.rotation) * // Get the position of the vertex in CamaraSpcae by translating and rotating the vertex by camera position and rotation
+				Math::Mat4MakeTranslation(-mainCamera.transform.position) * 
+				Math::Mat4MakeRotationYXZ(-mainCamera.transform.rotation) * // Get the position of the vertex in CamaraSpcae by translating and rotating the vertex by camera position and rotation
 				ProjectionMatrix; // Finaly Multiply the position of the vertex so we can convert it to the screen spcae
 
 
@@ -838,9 +890,9 @@ bool OnUpdate(float dt) {
 			if (p0_in_screen_space.w == 1.0f && p1_in_screen_space.w == 1.0f && p2_in_screen_space.w == 1.0f) {
 
 				if (
-					(p0_in_screen_space.x <= 1.0f && p0_in_screen_space.x >= -1.0f && p0_in_screen_space.y <= 1.0f && p0_in_screen_space.y >= -1.0f) ||
-					(p1_in_screen_space.x <= 1.0f && p1_in_screen_space.x >= -1.0f && p1_in_screen_space.y <= 1.0f && p1_in_screen_space.y >= -1.0f) ||
-					(p2_in_screen_space.x <= 1.0f && p2_in_screen_space.x >= -1.0f && p2_in_screen_space.y <= 1.0f && p2_in_screen_space.y >= -1.0f)
+					(p0_in_screen_space.x <= 1.0f && p0_in_screen_space.x >= -1.0f && p0_in_screen_space.y <= 1.0f && p0_in_screen_space.y >= -1.0f && p0_in_screen_space.z <= 1.0f && p0_in_screen_space.z >= 0.0f) ||
+					(p1_in_screen_space.x <= 1.0f && p1_in_screen_space.x >= -1.0f && p1_in_screen_space.y <= 1.0f && p1_in_screen_space.y >= -1.0f && p1_in_screen_space.z <= 1.0f && p1_in_screen_space.z >= 0.0f) ||
+					(p2_in_screen_space.x <= 1.0f && p2_in_screen_space.x >= -1.0f && p2_in_screen_space.y <= 1.0f && p2_in_screen_space.y >= -1.0f && p2_in_screen_space.z <= 1.0f && p2_in_screen_space.z >= 0.0f)
 					) {
 
 					//Get the normal of this particular triangle (in world space)
@@ -854,14 +906,14 @@ bool OnUpdate(float dt) {
 					//Directional Light direction
 					//We could pre calcultate this instead of recalculating this every frame
 					//But this way it gets a more dynamic look. I mean if you modified the rotation of the directional light at runtime pre calculated results won't give you realtime results
-					Math::Vector3 directional_light_direction = Math::VEC3_Forward * Math::Mat3MakeRotationZXY(directoinalLight.rotation);
+					Math::Vector3 directional_light_direction = Math::VEC3_FORWARD * Math::Mat3MakeRotationZXY(directoinalLight.rotation);
 					directional_light_direction.Normalize();
 
 					//Since we are calculating the dot product of 2 normalized vectors dot product will be between -1 and 1. We have to normalize that before feeding it into the ClassifyPixel() function to determine the color of the pixel
 					float dot_product_of_the_triangle_normal_and_light_direction = Math::Vec3DotProduct(normal, directional_light_direction);
 
 					//Normalize the dot_product_of_the_triangle_normal_and_light_direction
-					dot_product_of_the_triangle_normal_and_light_direction = dot_product_of_the_triangle_normal_and_light_direction * 0.5f + 0.5f;
+					dot_product_of_the_triangle_normal_and_light_direction = -dot_product_of_the_triangle_normal_and_light_direction * 0.5f + 0.5f;
 
 
 
