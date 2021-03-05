@@ -41,5 +41,8 @@
     <ClInclude Include="src\Math\Vector4.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Math\Matrix.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
